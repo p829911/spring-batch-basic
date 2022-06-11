@@ -3,7 +3,10 @@ package me.p829911.spring.batch.job;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.p829911.spring.batch.job.validator.LocalDateParameterValidator;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.JobScope;
@@ -29,8 +32,27 @@ public class AdvancedJobConfig {
     return jobBuilderFactory.get("advancedJob")
         .incrementer(new RunIdIncrementer())
         .validator(new LocalDateParameterValidator("targetDate"))
+        .listener(jobExecutionListener())
         .start(advancedStep)
         .build();
+  }
+
+  @JobScope
+  @Bean
+  public JobExecutionListener jobExecutionListener() {
+    return new JobExecutionListener() {
+      @Override
+      public void beforeJob(JobExecution jobExecution) {
+        log.info("[JobExecutionListener#beforeJob] jobExecution is " + jobExecution.getStatus());
+      }
+
+      @Override
+      public void afterJob(JobExecution jobExecution) {
+        if (jobExecution.getStatus() == BatchStatus.FAILED) {
+          log.error("[JobExecutionListener#beforeJob] jobExecution is FAILED!!! RECOVER ASAP");
+        }
+      }
+    };
   }
 
   @JobScope
@@ -47,7 +69,8 @@ public class AdvancedJobConfig {
     return ((contribution, chunkContext) -> {
       log.info("[AdvancedJobConfig] JobParameter - targetDate = {}", targetDate);
       log.info("[AdvancedJobConfig] executed advancedTasklet");
-      return RepeatStatus.FINISHED;
+      throw new RuntimeException("ERROR!!!");
+//      return RepeatStatus.FINISHED;
     });
   }
 }
